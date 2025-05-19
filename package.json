@@ -1,0 +1,14 @@
+{
+  "name": "image-processing-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda function for image processing",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1550.0",
+    "sharp": "^0.33.2",
+    "axios": "^1.6.7"
+  }
+} 

@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  ImageProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          DOWNSTREAM_SERVICE_URL: http://localhost:3000
+          DOWNSTREAM_SERVICE_API_KEY: test-key
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /process-image
+            Method: post 

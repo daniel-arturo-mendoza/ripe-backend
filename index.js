@@ -1,83 +1,78 @@
-const sharp = require('sharp');
-const axios = require('axios');
+const ImageService = require('./src/services/imageService');
+const DownstreamService = require('./src/services/downstreamService');
+const ResponseHandler = require('./src/utils/responseHandler');
+const { ValidationError } = require('./src/utils/errors');
+const config = require('./src/config');
 
+// Middleware to parse and validate request body
+const parseRequestBody = (event) => {
+    try {
+        const body = JSON.parse(event.body);
+        if (!body.image) {
+            throw new ValidationError('No image provided in the request');
+        }
+        return body;
+    } catch (error) {
+        if (error instanceof ValidationError) {
+            throw error;
+        }
+        throw new ValidationError('Invalid request body format');
+    }
+};
+
+// Middleware to handle CORS preflight requests
+const handleCors = (event) => {
+    if (event.httpMethod === 'OPTIONS') {
+        return {
+            statusCode: 200,
+            headers: ResponseHandler.getHeaders(),
+            body: JSON.stringify({
+                success: true,
+                data: {},
+                message: 'CORS preflight successful'
+            })
+        };
+    }
+    return null;
+};
+
+// Initialize services
+const downstreamService = new DownstreamService(config);
+const imageService = new ImageService(downstreamService);
+
+// Main handler
 exports.handler = async (event) => {
     try {
         console.log('Received event:', JSON.stringify(event, null, 2));
-        
-        // Parse the incoming event
-        const body = JSON.parse(event.body);
-        const { image, metadata } = body;
 
-        if (!image) {
-            throw new Error('No image provided in the request');
-        }
+        // Handle CORS preflight
+        const corsResponse = handleCors(event);
+        if (corsResponse) return corsResponse;
 
-        console.log('Processing image...');
-        // Convert base64 image to buffer
-        const imageBuffer = Buffer.from(image, 'base64');
+        // Parse and validate request body
+        const { image, metadata } = parseRequestBody(event);
 
-        // Process image with sharp
-        const processedImage = await sharp(imageBuffer)
-            .resize(800, 600, { fit: 'inside' }) // Example processing
-            .toBuffer();
-
-        console.log('Image processed successfully');
-
-        // Convert processed image back to base64
-        const processedImageBase64 = processedImage.toString('base64');
-
-        // Prepare data for downstream service
-        const downstreamData = {
-            image: processedImageBase64,
-            metadata: {
-                ...metadata,
-                processedAt: new Date().toISOString(),
-                originalSize: imageBuffer.length,
-                processedSize: processedImage.length
-            }
-        };
-
-        console.log('Sending to downstream service...');
-        // Send to downstream service (replace with your actual endpoint)
-        const downstreamResponse = await axios.post(
-            process.env.DOWNSTREAM_SERVICE_URL || 'http://localhost:3000/mock-downstream',
-            downstreamData,
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${process.env.DOWNSTREAM_SERVICE_API_KEY || 'test-key'}`
-                }
-            }
-        );
-
-        console.log('Downstream service response:', downstreamResponse.data);
+        // Process image and send to downstream service
+        const downstreamResponse = await imageService.processAndSendImage(image, metadata);
+        console.log('Downstream service response:', downstreamResponse);
 
         return {
             statusCode: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
+            headers: ResponseHandler.getHeaders(),
             body: JSON.stringify({
-                message: 'Image processed successfully',
-                downstreamResponse: downstreamResponse.data
+                success: true,
+                data: downstreamResponse,
+                message: 'Image processed successfully'
             })
         };
-
     } catch (error) {
-        console.error('Error processing image:', error);
-        
+        console.error('Error processing request:', error);
         return {
-            statusCode: 500,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
+            statusCode: error.statusCode || 500,
+            headers: ResponseHandler.getHeaders(),
             body: JSON.stringify({
-                message: 'Error processing image',
-                error: error.message,
-                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+                success: false,
+                error: error.message
             })
         };
     }

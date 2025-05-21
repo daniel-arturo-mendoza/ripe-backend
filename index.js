@@ -3,6 +3,7 @@ const DownstreamService = require('./src/services/downstreamService');
 const ResponseHandler = require('./src/utils/responseHandler');
 const { ValidationError } = require('./src/utils/errors');
 const config = require('./src/config');
+const RecipeService = require('./src/services/recipeService');
 
 // Middleware to parse and validate request body
 const parseRequestBody = (event) => {
@@ -39,6 +40,7 @@ const handleCors = (event) => {
 // Initialize services
 const downstreamService = new DownstreamService(config);
 const imageService = new ImageService(downstreamService);
+const recipeService = new RecipeService(downstreamService);
 
 // Main handler
 exports.handler = async (event) => {
@@ -49,22 +51,34 @@ exports.handler = async (event) => {
         const corsResponse = handleCors(event);
         if (corsResponse) return corsResponse;
 
-        // Parse and validate request body
-        const { image, metadata } = parseRequestBody(event);
-
-        // Process image and send to downstream service
-        const downstreamResponse = await imageService.processAndSendImage(image, metadata);
-        console.log('Downstream service response:', downstreamResponse);
-
-        return {
-            statusCode: 200,
-            headers: ResponseHandler.getHeaders(),
-            body: JSON.stringify({
-                success: true,
-                data: downstreamResponse,
-                message: 'Image processed successfully'
-            })
-        };
+        // Route based on path
+        if (event.path === '/recipe') {
+            const { fruitType, ripenessLevel } = JSON.parse(event.body);
+            const recipe = await recipeService.generateRecipe(fruitType, ripenessLevel);
+            return {
+                statusCode: 200,
+                headers: ResponseHandler.getHeaders(),
+                body: JSON.stringify({
+                    success: true,
+                    data: recipe,
+                    message: 'Recipe generated successfully'
+                })
+            };
+        } else {
+            // Parse and validate request body for image processing
+            const { image, metadata } = parseRequestBody(event);
+            const downstreamResponse = await imageService.processAndSendImage(image, metadata);
+            console.log('Downstream service response:', downstreamResponse);
+            return {
+                statusCode: 200,
+                headers: ResponseHandler.getHeaders(),
+                body: JSON.stringify({
+                    success: true,
+                    data: downstreamResponse,
+                    message: 'Image processed successfully'
+                })
+            };
+        }
     } catch (error) {
         console.error('Error processing request:', error);
         return {

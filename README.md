@@ -1,6 +1,13 @@
 # Ripe Backend
 
-A serverless backend service for image processing using AWS Lambda and the Sharp library.
+A serverless backend service for image handling using AWS Lambda.
+
+## Features
+
+- Image validation and size checking
+- Integration with downstream services
+- CORS support
+- Error handling and logging
 
 ## Prerequisites
 
@@ -16,15 +23,35 @@ A serverless backend service for image processing using AWS Lambda and the Sharp
    npm install
    ```
 
-2. Start the local API:
+2. Configure environment variables:
    ```bash
-   sam local start-api
+   cp .env.example .env
+   # Edit .env with your configuration
    ```
 
-3. Test the API:
+3. Deploy to AWS:
    ```bash
-   curl -X POST http://localhost:3000/process-image -H "Content-Type: application/json" -d @test-event.json
+   sam deploy --guided
    ```
+
+## API Endpoints
+
+### POST /process-image
+Processes and validates an image.
+
+Request body:
+```json
+{
+    "image": "base64-encoded-image-data",
+    "metadata": {
+        "format": "jpeg",
+        "dimensions": {
+            "width": 800,
+            "height": 600
+        }
+    }
+}
+```
 
 ## Project Structure
 
@@ -34,7 +61,10 @@ A serverless backend service for image processing using AWS Lambda and the Sharp
 
 ## Development
 
-The project uses AWS SAM for local development and testing. The main endpoint is `/process-image` which accepts POST requests with image data.
+Run tests:
+```bash
+npm test
+```
 
 ## License
 

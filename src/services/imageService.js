@@ -7,31 +7,39 @@ class ImageService {
         this.downstreamService = downstreamService;
     }
 
+    generateFruitEvaluationPrompt() {
+        return {
+            systemPrompt: `You are an expert in fruit quality assessment. Analyze the image and provide:
+1. The type of fruit
+2. The ripeness level (Unripe, Slightly Ripe, Perfectly Ripe, Overripe)
+3. Visual indicators of ripeness (color, texture, etc.)
+4. Recommendations for use based on ripeness level
+Keep your response concise and structured.`,
+            prompt: "Please analyze this image of a fruit and evaluate its ripeness level."
+        };
+    }
+
     async processAndSendImage(imageData, metadata = {}) {
         try {
-            // Convert base64 image to buffer
+            // Validate that the input is a valid base64 string
+            if (!imageData || typeof imageData !== 'string') {
+                throw new ValidationError('Invalid image data format');
+            }
+
+            // Convert to buffer for validation
             const imageBuffer = Buffer.from(imageData, 'base64');
 
             // Validate image
             const imageMetadata = await ImageValidator.validateImage(imageBuffer);
 
-            // Process image
-            const processedImage = await ImageProcessor.processImage(imageBuffer);
+            // Generate fruit evaluation prompt
+            const { systemPrompt, prompt } = this.generateFruitEvaluationPrompt();
 
-            // Prepare data for downstream service
+            // Prepare data for downstream service - send the original base64 string
             const downstreamData = {
-                image: processedImage.toString('base64'),
-                metadata: {
-                    ...metadata,
-                    processedAt: new Date().toISOString(),
-                    originalSize: imageBuffer.length,
-                    processedSize: processedImage.length,
-                    originalFormat: imageMetadata.format,
-                    originalDimensions: {
-                        width: imageMetadata.width,
-                        height: imageMetadata.height
-                    }
-                }
+                image: imageData, // Use the original base64 string
+                systemPrompt,
+                prompt
             };
 
             // Send to downstream service

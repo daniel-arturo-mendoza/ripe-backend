@@ -2,13 +2,13 @@
 node_modules/
 package-lock.json
 
-# AWS SAM
+# Build output
 .aws-sam/
-samconfig.toml
+dist/
 
 # Environment variables
 .env
-.env.local
+.env.*
 
 # IDE
 .vscode/
@@ -16,8 +16,10 @@ samconfig.toml
 
 # Logs
 *.log
-npm-debug.log*
 
-# OS
+# AWS SAM template (contains sensitive data)
+template.yaml
+
+# Local development
 .DS_Store
 Thumbs.db 

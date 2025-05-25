@@ -1,10 +1,11 @@
-const config = require('../config');
+const getConfig = require('../config');
 
 class ResponseHandler {
-    static success(data, message = 'Success') {
+    static async success(data, message = 'Success') {
+        const config = await getConfig();
         return {
             statusCode: 200,
-            headers: this.getHeaders(),
+            headers: this.getHeaders(config),
             body: JSON.stringify({
                 message,
                 data
@@ -12,13 +13,14 @@ class ResponseHandler {
         };
     }
 
-    static error(error) {
+    static async error(error) {
+        const config = await getConfig();
         const statusCode = error.statusCode || 500;
         const message = error.message || 'Internal Server Error';
 
         return {
             statusCode,
-            headers: this.getHeaders(),
+            headers: this.getHeaders(config),
             body: JSON.stringify({
                 message: 'Error processing request',
                 error: message,
@@ -27,7 +29,7 @@ class ResponseHandler {
         };
     }
 
-    static getHeaders() {
+    static getHeaders(config) {
         return {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': config.cors.allowedOrigins[0],

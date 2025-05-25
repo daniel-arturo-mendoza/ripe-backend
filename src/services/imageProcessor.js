@@ -1,29 +1,39 @@
-const sharp = require('sharp');
-const config = require('../config');
 const { ProcessingError } = require('../utils/errors');
 
 class ImageProcessor {
     static async processImage(buffer, options = {}) {
-        const {
-            width = config.image.defaultWidth,
-            height = config.image.defaultHeight,
-            fit = 'inside'
-        } = options;
-
+        // Since we're moving image processing to the client side,
+        // this function now just validates the buffer
         try {
-            const processedImage = await sharp(buffer)
-                .resize(width, height, { fit })
-                .toBuffer();
+            // Basic validation: check if buffer exists and has content
+            if (!buffer || buffer.length === 0) {
+                throw new ProcessingError('Invalid image buffer');
+            }
 
-            return processedImage;
+            // Check if buffer size is within reasonable limits (e.g., 10MB)
+            const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+            if (buffer.length > MAX_SIZE) {
+                throw new ProcessingError('Image size exceeds maximum limit of 10MB');
+            }
+
+            // Return the original buffer since we're not processing it
+            return buffer;
         } catch (error) {
-            throw new ProcessingError(`Failed to process image: ${error.message}`);
+            throw new ProcessingError(`Failed to validate image: ${error.message}`);
         }
     }
 
     static async getImageMetadata(buffer) {
         try {
-            return await sharp(buffer).metadata();
+            // Basic metadata
+            return {
+                size: buffer.length,
+                // Note: We can't get actual dimensions without processing the image
+                // These would need to be provided by the client if needed
+                width: null,
+                height: null,
+                format: null
+            };
         } catch (error) {
             throw new ProcessingError(`Failed to get image metadata: ${error.message}`);
         }

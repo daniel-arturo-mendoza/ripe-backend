@@ -7,47 +7,63 @@ class OpenAIProvider extends BaseProvider {
         super(config);
         this.validateConfig();
         this.client = axios.create({
-            baseURL: this.config.baseUrl || 'https://api.openai.com/v1',
+            baseURL: this.config.openai.baseUrl || 'https://api.openai.com/v1',
             headers: {
-                'Authorization': `Bearer ${this.config.apiKey}`,
+                'Authorization': `Bearer ${this.config.openai.apiKey}`,
                 'Content-Type': 'application/json'
             }
         });
     }
 
     validateConfig() {
-        if (!this.config.apiKey) {
+        if (!this.config.openai?.apiKey) {
             throw new ProviderError('OpenAI API key is required');
         }
     }
 
     async processRequest(data) {
-        // For backward compatibility: if data.image or data.size, treat as image; else, treat as text
-        if (data.image || data.size || data.responseFormat === 'url') {
-            return this.generateImage(data);
+        if (data.image) {
+            return this.analyzeImage(data);
         } else {
             return this.generateTextCompletion(data);
         }
     }
 
-    async generateImage(data) {
+    async analyzeImage(data) {
         try {
-            const response = await this.client.post('/images/generations', {
-                prompt: data.prompt,
-                n: data.n || 1,
-                size: data.size || '1024x1024',
-                response_format: data.responseFormat || 'url'
+            const response = await this.client.post('/chat/completions', {
+                model: 'gpt-4-vision-preview',
+                messages: [
+                    {
+                        role: 'system',
+                        content: data.systemPrompt || 'You are an expert in fruit quality assessment.'
+                    },
+                    {
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: data.prompt || 'Please analyze this image of a fruit and evaluate its ripeness level.' },
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: `data:image/jpeg;base64,${data.image}`
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens: 500
             });
 
             return {
                 provider: 'openai',
-                data: response.data,
+                data: response.data.choices[0].message.content,
                 metadata: {
-                    model: 'dall-e-3',
+                    model: 'gpt-4-vision-preview',
                     timestamp: new Date().toISOString()
                 }
             };
         } catch (error) {
+            console.error('OpenAI API error:', error.response?.data || error.message);
             throw new ProviderError(`OpenAI API error: ${error.message}`);
         }
     }

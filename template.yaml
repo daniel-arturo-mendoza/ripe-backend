@@ -2,21 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
 Resources:
-  RateLimitsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: RateLimits
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: clientIp
-          AttributeType: S
-      KeySchema:
-        - AttributeName: clientIp
-          KeyType: HASH
-      TimeToLiveSpecification:
-        AttributeName: ttl
-        Enabled: true
-
   ImageProcessingFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -25,73 +10,31 @@ Resources:
       Runtime: nodejs18.x
       Timeout: 30
       MemorySize: 512
-      Environment:
-        Variables:
-          DOWNSTREAM_SERVICE_URL: http://localhost:3000
-          DOWNSTREAM_SERVICE_API_KEY: test-key
       Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref RateLimitsTable
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+                - ssm:GetParameters
+                - kms:Decrypt
+              Resource: 
+                - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/ripe-backend/openai-key'
+                - !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
       Events:
         ApiEvent:
           Type: Api
           Properties:
             Path: /process-image
             Method: post
-            RequestParameters:
-              - method.request.header.Content-Type: true
-            RequestTemplates:
-              application/json: |
-                {
-                  "body": $input.json('$')
-                }
-            RequestValidatorId: !Ref RequestValidator
-            RequestValidator: PARAMETER_VALIDATION
+            RestApiId: !Ref ApiGatewayApi
 
   ApiGatewayApi:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
-      # Rate limit: 1 request per 5 seconds
-      ThrottlingBurstLimit: 1
-      ThrottlingRateLimit: 0.2
-      UsagePlan:
-        UsagePlanName: ImageProcessingUsagePlan
-        Description: Usage plan for image processing API with strict rate limiting
-        Quota:
-          Limit: 1000
-          Period: MONTH
-        Throttle:
-          BurstLimit: 1
-          RateLimit: 0.2
-        UsagePlanQuotas:
-          - Limit: 1000
-            Period: MONTH
-        UsagePlanThrottles:
-          - BurstLimit: 1
-            RateLimit: 0.2
-
-  RequestValidator:
-    Type: AWS::ApiGateway::RequestValidator
-    Properties:
-      Name: ParameterValidator
-      RestApiId: !Ref ServerlessRestApi
-      ValidateRequestBody: true
-      ValidateRequestParameters: true
-
-  ApiGatewayRequestValidator:
-    Type: AWS::ApiGateway::Model
-    Properties:
-      RestApiId: !Ref ServerlessRestApi
-      Name: RequestModel
-      ContentType: application/json
-      Schema:
-        $schema: "http://json-schema.org/draft-04/schema#"
-        type: "object"
-        properties:
-          image:
-            type: "string"
-            maxLength: 699050  # 512KB in base64 (512 * 1024 * 4/3)
-          metadata:
-            type: "object"
-        required: ["image"] 
+      Cors:
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'" 

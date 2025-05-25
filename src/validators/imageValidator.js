@@ -1,4 +1,3 @@
-const sharp = require('sharp');
 const config = require('../config');
 const { ValidationError } = require('../utils/errors');
 
@@ -11,14 +10,14 @@ const ALLOWED_FORMATS = {
     'gif': 'image/gif'
 };
 
-// Maximum dimensions allowed
-const MAX_WIDTH = 4096;
-const MAX_HEIGHT = 4096;
-const MAX_SIZE = 512 * 1024; // 512KB in bytes
-
 class ImageValidator {
     static async validateImage(buffer) {
         try {
+            // Check if buffer exists and has content
+            if (!buffer || buffer.length === 0) {
+                throw new ValidationError('Empty image buffer provided');
+            }
+
             // Check file size
             if (buffer.length > config.image.maxSize) {
                 throw new ValidationError(
@@ -27,34 +26,15 @@ class ImageValidator {
                 );
             }
 
-            // Get image metadata
-            const metadata = await sharp(buffer).metadata();
-            
-            // Check if it's a supported format
-            if (!config.image.supportedFormats[metadata.format]) {
-                throw new ValidationError(
-                    `Unsupported image format: ${metadata.format}. ` +
-                    `Supported formats are: ${Object.keys(config.image.supportedFormats).join(', ')}`
-                );
-            }
-
-            // Check dimensions
-            if (metadata.width > config.image.maxWidth || metadata.height > config.image.maxHeight) {
-                throw new ValidationError(
-                    `Image dimensions exceed maximum allowed size. ` +
-                    `Max dimensions: ${config.image.maxWidth}x${config.image.maxHeight}`
-                );
-            }
-
-            // Check for potential malicious content
-            if (metadata.width === 0 || metadata.height === 0) {
-                throw new ValidationError('Invalid image dimensions');
-            }
-
-            // Check if the file is actually an image by attempting to process it
-            await sharp(buffer)
-                .resize(1, 1) // Try to resize to 1x1 to verify it's processable
-                .toBuffer();
+            // Basic metadata without processing
+            const metadata = {
+                size: buffer.length,
+                // Note: We can't validate format or dimensions without processing
+                // These would need to be provided by the client if needed
+                format: null,
+                width: null,
+                height: null
+            };
 
             return metadata;
         } catch (error) {
@@ -66,7 +46,7 @@ class ImageValidator {
     }
 
     static getSupportedFormats() {
-        return Object.keys(config.image.supportedFormats);
+        return Object.keys(ALLOWED_FORMATS);
     }
 }
 

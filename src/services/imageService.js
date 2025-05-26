@@ -22,22 +22,25 @@ Keep your response concise and structured.`,
     async processAndSendImage(imageData, metadata = {}) {
         try {
             // Validate that the input is a valid base64 string
-            if (!imageData || typeof imageData !== 'string') {
-                throw new ValidationError('Invalid image data format');
-            }
+            // if (!imageData || typeof imageData !== 'string') {
+            //     throw new ValidationError('Invalid image data format');
+            // }
 
             // Convert to buffer for validation
-            const imageBuffer = Buffer.from(imageData, 'base64');
+            // const imageBuffer = Buffer.from(imageData, 'base64');
 
             // Validate image
-            const imageMetadata = await ImageValidator.validateImage(imageBuffer);
+            // const imageMetadata = await ImageValidator.validateImage(imageBuffer);
 
             // Generate fruit evaluation prompt
             const { systemPrompt, prompt } = this.generateFruitEvaluationPrompt();
 
-            // Prepare data for downstream service - send the original base64 string
+            // Format the base64 image data with data URL format
+            const formattedImageData = `data:image/jpeg;base64,${imageData}`;
+
+            // Prepare data for downstream service
             const downstreamData = {
-                image: imageData, // Use the original base64 string
+                image: formattedImageData,
                 systemPrompt,
                 prompt
             };

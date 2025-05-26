@@ -32,7 +32,7 @@ class OpenAIProvider extends BaseProvider {
     async analyzeImage(data) {
         try {
             const response = await this.client.post('/chat/completions', {
-                model: 'gpt-4-vision-preview',
+                model: 'gpt-4o',
                 messages: [
                     {
                         role: 'system',
@@ -45,7 +45,7 @@ class OpenAIProvider extends BaseProvider {
                             {
                                 type: 'image_url',
                                 image_url: {
-                                    url: `data:image/jpeg;base64,${data.image}`
+                                    url: data.image  // Use the image data as is, since it's already formatted
                                 }
                             }
                         ]
@@ -58,7 +58,7 @@ class OpenAIProvider extends BaseProvider {
                 provider: 'openai',
                 data: response.data.choices[0].message.content,
                 metadata: {
-                    model: 'gpt-4-vision-preview',
+                    model: 'gpt-4o',
                     timestamp: new Date().toISOString()
                 }
             };

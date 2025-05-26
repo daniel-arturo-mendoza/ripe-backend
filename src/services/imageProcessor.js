@@ -10,10 +10,10 @@ class ImageProcessor {
                 throw new ProcessingError('Invalid image buffer');
             }
 
-            // Check if buffer size is within reasonable limits (e.g., 10MB)
-            const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+            // Check if buffer size is within reasonable limits (e.g., 5MB)
+            const MAX_SIZE = 5 * 1024 * 1024; // 5MB
             if (buffer.length > MAX_SIZE) {
-                throw new ProcessingError('Image size exceeds maximum limit of 10MB');
+                throw new ProcessingError('Image size exceeds maximum limit of 5MB');
             }
 
             // Return the original buffer since we're not processing it

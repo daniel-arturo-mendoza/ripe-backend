@@ -1,6 +1,5 @@
-const ImageValidator = require('../validators/imageValidator');
-const ImageProcessor = require('./imageProcessor');
 const { ValidationError, ProcessingError } = require('../utils/errors');
+const promptManager = require('../config/prompts');
 
 class ImageService {
     constructor(downstreamService) {
@@ -8,32 +7,13 @@ class ImageService {
     }
 
     generateFruitEvaluationPrompt() {
-        return {
-            systemPrompt: `You are an expert in fruit quality assessment. Analyze the image and provide:
-1. The type of fruit
-2. The ripeness level (Unripe, Slightly Ripe, Perfectly Ripe, Overripe)
-3. Visual indicators of ripeness (color, texture, etc.)
-4. Recommendations for use based on ripeness level
-Keep your response concise and structured.`,
-            prompt: "Please analyze this image of a fruit and evaluate its ripeness level."
-        };
+        return promptManager.getPrompts().fruitEvaluation;
     }
 
     async processAndSendImage(imageData, metadata = {}) {
         try {
-            // Validate that the input is a valid base64 string
-            // if (!imageData || typeof imageData !== 'string') {
-            //     throw new ValidationError('Invalid image data format');
-            // }
-
-            // Convert to buffer for validation
-            // const imageBuffer = Buffer.from(imageData, 'base64');
-
-            // Validate image
-            // const imageMetadata = await ImageValidator.validateImage(imageBuffer);
-
             // Generate fruit evaluation prompt
-            const { systemPrompt, prompt } = this.generateFruitEvaluationPrompt();
+            const { systemPrompt, userPrompt } = this.generateFruitEvaluationPrompt();
 
             // Format the base64 image data with data URL format
             const formattedImageData = `data:image/jpeg;base64,${imageData}`;
@@ -42,7 +22,7 @@ Keep your response concise and structured.`,
             const downstreamData = {
                 image: formattedImageData,
                 systemPrompt,
-                prompt
+                prompt: userPrompt
             };
 
             // Send to downstream service

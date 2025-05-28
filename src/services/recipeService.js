@@ -1,4 +1,5 @@
 const { ValidationError } = require('../utils/errors');
+const promptManager = require('../config/prompts');
 
 class RecipeService {
     constructor(downstreamService) {
@@ -13,10 +14,10 @@ class RecipeService {
             throw new ValidationError('Ripeness level is required');
         }
 
-        const prompt = `Generate a recipe using ${fruitType} with a ripeness level of ${ripenessLevel}.`;
+        const { systemPrompt, userPrompt } = promptManager.getPrompts().recipeGeneration;
         const data = {
-            prompt,
-            systemPrompt: 'You are a helpful assistant that provides recipes.'
+            prompt: userPrompt(fruitType, ripenessLevel),
+            systemPrompt
         };
 
         try {
